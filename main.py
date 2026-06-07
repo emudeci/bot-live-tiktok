@@ -8,7 +8,7 @@ except ImportError:  # pragma: no cover - provide a clear runtime error if missi
     TikTokLiveClient = None
     print("Warning: TikTokLive library not found. Install with 'pip install TikTokLive' to enable TikTok checks.")
 
-DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
+TOKEN = os.getenv("DISCORD_TOKEN")
 CHANNEL_ID = int(os.getenv("CHANNEL_ID"))
 TIKTOK_USER = os.getenv("TIKTOK_USER")
 
@@ -52,4 +52,4 @@ async def on_ready():
     print(f"Bot online: {bot.user}")
     bot.loop.create_task(verificar_live())
 
-bot.run(DISCORD_TOKEN)
+bot.run(TOKEN)
