@@ -29,27 +29,20 @@ async def verificar_live():
             client = TikTokLiveClient(unique_id=TIKTOK_USER)
 
             try:
-                await client.connect()
+                task = asyncio.create_task(client.connect())
+                await asyncio.sleep(5)
 
                 if not avisou:
                     canal = bot.get_channel(CHANNEL_ID)
-                    await canal.send(
-                        f"🔴 **LIVE ABERTA NO TIKTOK!**\n"
-                        f"https://www.tiktok.com/@{TIKTOK_USER}/live"
-                    )
+                    if canal is not None:
+                        await canal.send(
+                            f"🔴 LIVE ABERTA NO TIKTOK!\n"
+                            f"https://www.tiktok.com/@{TIKTOK_USER}/live"
+                        )
                     avisou = True
 
-                await client.disconnect()
-
-            except Exception:
+                task.cancel()
+            except Exception as e:
                 avisou = False
-                print("Não está em live.")
-
-        await asyncio.sleep(60)
-
-@bot.event
-async def on_ready():
-    print(f"Bot online: {bot.user}")
-    bot.loop.create_task(verificar_live())
-
+                print(f"Não está em live ou deu erro: {e}")
 bot.run(TOKEN)
