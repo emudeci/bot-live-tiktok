@@ -1,14 +1,22 @@
 import os
 import asyncio
+import importlib.util
 import discord
 from discord.ext import commands
-try:
-    from TikTokLive import TikTokLiveClient  # type: ignore
-except ImportError:  # pragma: no cover - provide a clear runtime error if missing
-    TikTokLiveClient = None
-    print("Warning: TikTokLive library not found. Install with 'pip install TikTokLive' to enable TikTok checks.")
+
+load_dotenv = None
+if importlib.util.find_spec("dotenv") is not None:
+    load_dotenv = importlib.import_module("dotenv").load_dotenv
+
+if load_dotenv is not None:
+    load_dotenv(".env")
+
+from TikTokLive import TikTokLiveClient
 
 TOKEN = os.getenv("DISCORD_TOKEN")
+print("CHANNEL_ID:", os.getenv("CHANNEL_ID"))
+print("TIKTOK_USER:", os.getenv("TIKTOK_USER"))
+
 CHANNEL_ID = int(os.getenv("CHANNEL_ID"))
 TIKTOK_USER = os.getenv("TIKTOK_USER")
 
@@ -16,33 +24,46 @@ bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
 
 avisou = False
 
+
 async def verificar_live():
     global avisou
 
     await bot.wait_until_ready()
 
     while not bot.is_closed():
-        if TikTokLiveClient is None:
-            avisou = False
-            print("TikTokLiveClient unavailable; skipping check.")
-        else:
+        try:
             client = TikTokLiveClient(unique_id=TIKTOK_USER)
 
-            try:
-                task = asyncio.create_task(client.connect())
-                await asyncio.sleep(8)
-                if not task.done():
-                    if not avisou:
-                        canal = bot.get_channel(int(CHANNEL_ID))
-                        if canal is not None:
-                            await canal.send(
-                                f"🔴 LIVE ABERTA NO TIKTOK!\n"
-                                f"https://www.tiktok.com/@{TIKTOK_USER}/live"
-                            )
-                        avisou = True
+            esta_live = await client.is_live()
 
-                    task.cancel()
-            except Exception as e:
+            if esta_live:
+                if not avisou:
+                    canal = bot.get_channel(CHANNEL_ID)
+
+                    if canal:
+                        await canal.send(
+                            f"🔴 LIVE ABERTA NO TIKTOK!\n"
+                            f"https://www.tiktok.com/@{TIKTOK_USER}/live"
+                        )
+
+                    avisou = True
+            else:
                 avisou = False
-                print(f"Não está em live ou deu erro: {e}")
+                print("Não está em live.")
+
+        except Exception as e:
+            avisou = False
+            print(f"Erro ao verificar live: {e}")
+
+        await asyncio.sleep(60)
+
+
+@bot.event
+async def on_ready():
+    print(f"Bot online como {bot.user}")
+
+    if not hasattr(bot, "live_task"):
+        bot.live_task = asyncio.create_task(verificar_live())
+
+
 bot.run(TOKEN)
